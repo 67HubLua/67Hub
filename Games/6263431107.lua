@@ -122,21 +122,13 @@ local function updatePlayerRole(targetPlayer, playerLabel, playerFrame)
     local roleValue = nil
     local subRoleValue = nil
     
-    if targetPlayer.Parent then
-        if targetPlayer:FindFirstChild("States") and 
-           targetPlayer.States:FindFirstChild("Role") and 
-           targetPlayer.States.Role:IsA("StringValue") then
-            roleValue = targetPlayer.States.Role.Value
-        elseif targetPlayer:FindFirstChild("PublicStates") and 
-               targetPlayer.PublicStates:FindFirstChild("Role") and 
-               targetPlayer.PublicStates.Role:IsA("StringValue") then
-            roleValue = targetPlayer.PublicStates.Role.Value
+    if targetPlayer.Parent and targetPlayer:FindFirstChild("PublicStates") then
+        local publicStates = targetPlayer.PublicStates
+        if publicStates:FindFirstChild("Role") and publicStates.Role:IsA("StringValue") then
+            roleValue = publicStates.Role.Value
         end
-        
-        if targetPlayer:FindFirstChild("PublicStates") and 
-           targetPlayer.PublicStates:FindFirstChild("SubRole") and 
-           targetPlayer.PublicStates.SubRole:IsA("StringValue") then
-            subRoleValue = targetPlayer.PublicStates.SubRole.Value
+        if publicStates:FindFirstChild("SubRole") and publicStates.SubRole:IsA("StringValue") then
+            subRoleValue = publicStates.SubRole.Value
         end
     end
     
@@ -166,17 +158,9 @@ local function updateImposterCount()
     imposterCount = 0
     for _, targetPlayer in pairs(Players:GetPlayers()) do
         local roleValue = nil
-        
-        if targetPlayer:FindFirstChild("States") and 
-           targetPlayer.States:FindFirstChild("Role") and 
-           targetPlayer.States.Role:IsA("StringValue") then
-            roleValue = targetPlayer.States.Role.Value
-        elseif targetPlayer:FindFirstChild("PublicStates") and 
-               targetPlayer.PublicStates:FindFirstChild("Role") and 
-               targetPlayer.PublicStates.Role:IsA("StringValue") then
+        if targetPlayer:FindFirstChild("PublicStates") and targetPlayer.PublicStates:FindFirstChild("Role") then
             roleValue = targetPlayer.PublicStates.Role.Value
         end
-        
         if roleValue and roleValue:lower() == "imposter" then
             imposterCount = imposterCount + 1
         end
@@ -192,99 +176,32 @@ local function updateImposterCount()
 end
 
 local function setupPlayerMonitoring(targetPlayer)
-    if playerConnections[targetPlayer.Name] then
-        return
-    end
+    if playerConnections[targetPlayer.Name] then return end
     
     local playerFrame, playerLabel = createPlayerEntry(targetPlayer)
-    
     updatePlayerRole(targetPlayer, playerLabel, playerFrame)
     
     playerConnections[targetPlayer.Name] = {}
     
-    local function connectToRole()
-        local roleConnected = false
-        local subRoleConnected = false
-        
-        if targetPlayer.Parent and targetPlayer:FindFirstChild("States") and 
-           targetPlayer.States:FindFirstChild("Role") and 
-           targetPlayer.States.Role:IsA("StringValue") then
-            
-            if not playerConnections[targetPlayer.Name].roleConnection then
-                playerConnections[targetPlayer.Name].roleConnection = targetPlayer.States.Role.Changed:Connect(function()
-                    updatePlayerRole(targetPlayer, playerLabel, playerFrame)
-                    updateImposterCount()
-                end)
-            end
-            roleConnected = true
-        elseif targetPlayer.Parent and targetPlayer:FindFirstChild("PublicStates") and 
-               targetPlayer.PublicStates:FindFirstChild("Role") and 
-               targetPlayer.PublicStates.Role:IsA("StringValue") then
-            
-            if not playerConnections[targetPlayer.Name].publicRoleConnection then
-                playerConnections[targetPlayer.Name].publicRoleConnection = targetPlayer.PublicStates.Role.Changed:Connect(function()
-                    updatePlayerRole(targetPlayer, playerLabel, playerFrame)
-                    updateImposterCount()
-                end)
-            end
-            roleConnected = true
+    if targetPlayer:FindFirstChild("PublicStates") then
+        local publicStates = targetPlayer.PublicStates
+        if publicStates:FindFirstChild("Role") then
+            playerConnections[targetPlayer.Name].roleConnection = publicStates.Role.Changed:Connect(function()
+                updatePlayerRole(targetPlayer, playerLabel, playerFrame)
+                updateImposterCount()
+            end)
+        end
+        if publicStates:FindFirstChild("SubRole") then
+            playerConnections[targetPlayer.Name].subRoleConnection = publicStates.SubRole.Changed:Connect(function()
+                updatePlayerRole(targetPlayer, playerLabel, playerFrame)
+                updateImposterCount()
+            end)
         end
         
-        if targetPlayer.Parent and targetPlayer:FindFirstChild("PublicStates") and 
-           targetPlayer.PublicStates:FindFirstChild("SubRole") and 
-           targetPlayer.PublicStates.SubRole:IsA("StringValue") then
-            
-            if not playerConnections[targetPlayer.Name].subRoleConnection then
-                playerConnections[targetPlayer.Name].subRoleConnection = targetPlayer.PublicStates.SubRole.Changed:Connect(function()
-                    updatePlayerRole(targetPlayer, playerLabel, playerFrame)
-                    updateImposterCount()
-                end)
-            end
-            subRoleConnected = true
-        end
-        
-        if roleConnected or subRoleConnected then
-            updatePlayerRole(targetPlayer, playerLabel, playerFrame)
-        end
-    end
-    
-    local function connectToStates()
-        if targetPlayer.Parent and targetPlayer:FindFirstChild("States") then
-            connectToRole()
-            
-            if not playerConnections[targetPlayer.Name].roleAddedConnection then
-                playerConnections[targetPlayer.Name].roleAddedConnection = targetPlayer.States.ChildAdded:Connect(function(child)
-                    if child.Name == "Role" and child:IsA("StringValue") then
-                        connectToRole()
-                    end
-                end)
-            end
-        end
-    end
-    
-    local function connectToPublicStates()
-        if targetPlayer.Parent and targetPlayer:FindFirstChild("PublicStates") then
-            connectToRole()
-            
-            if not playerConnections[targetPlayer.Name].publicRoleAddedConnection then
-                playerConnections[targetPlayer.Name].publicRoleAddedConnection = targetPlayer.PublicStates.ChildAdded:Connect(function(child)
-                    if (child.Name == "Role" or child.Name == "SubRole") and child:IsA("StringValue") then
-                        connectToRole()
-                    end
-                end)
-            end
-        end
-    end
-    
-    connectToStates()
-    connectToPublicStates()
-    
-    if not playerConnections[targetPlayer.Name].statesConnection then
-        playerConnections[targetPlayer.Name].statesConnection = targetPlayer.ChildAdded:Connect(function(child)
-            if child.Name == "States" then
-                connectToStates()
-            elseif child.Name == "PublicStates" then
-                connectToPublicStates()
+        playerConnections[targetPlayer.Name].childAddedConnection = publicStates.ChildAdded:Connect(function(child)
+            if (child.Name == "Role" or child.Name == "SubRole") and child:IsA("StringValue") then
+                updatePlayerRole(targetPlayer, playerLabel, playerFrame)
+                updateImposterCount()
             end
         end)
     end
@@ -293,31 +210,19 @@ end
 local function cleanupPlayerMonitoring(playerName)
     if playerConnections[playerName] then
         for _, connection in pairs(playerConnections[playerName]) do
-            if connection then
-                connection:Disconnect()
-            end
+            if connection then connection:Disconnect() end
         end
         playerConnections[playerName] = nil
     end
     
     local playerFrame = scrollFrame:FindFirstChild(playerName)
-    if playerFrame then
-        playerFrame:Destroy()
-    end
-end
-
-local function scanAllPlayers()
-    for _, targetPlayer in pairs(Players:GetPlayers()) do
-        setupPlayerMonitoring(targetPlayer)
-    end
-    updateImposterCount()
+    if playerFrame then playerFrame:Destroy() end
 end
 
 local function destroyGui()
     for playerName, _ in pairs(playerConnections) do
         cleanupPlayerMonitoring(playerName)
     end
-    
     screenGui:Destroy()
 end
 
@@ -337,4 +242,7 @@ listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 5)
 end)
 
-scanAllPlayers()
+for _, targetPlayer in pairs(Players:GetPlayers()) do
+    setupPlayerMonitoring(targetPlayer)
+end
+updateImposterCount()
