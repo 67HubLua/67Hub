@@ -95,15 +95,16 @@ local imposterCount = 0
 
 local function createPlayerEntry(targetPlayer)
     local playerFrame = Instance.new("Frame")
+    playerFrame.Name = targetPlayer.Name
     playerFrame.Size = UDim2.new(1, -8, 0, 25)
     playerFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     playerFrame.BorderSizePixel = 0
     playerFrame.Parent = scrollFrame
-    
+
     local entryCorner = Instance.new("UICorner")
     entryCorner.CornerRadius = UDim.new(0, 3)
     entryCorner.Parent = playerFrame
-    
+
     local playerLabel = Instance.new("TextLabel")
     playerLabel.Size = UDim2.new(1, -10, 1, 0)
     playerLabel.Position = UDim2.new(0, 5, 0, 0)
@@ -114,30 +115,23 @@ local function createPlayerEntry(targetPlayer)
     playerLabel.Font = Enum.Font.Gotham
     playerLabel.TextXAlignment = Enum.TextXAlignment.Left
     playerLabel.Parent = playerFrame
-    
+
     return playerFrame, playerLabel
 end
 
+local function readPublicStates(targetPlayer)
+    local s = targetPlayer:FindFirstChild("PublicStates")
+    if not s then return nil, nil, nil end
+    local r = s:FindFirstChild("Role")
+    local sr = s:FindFirstChild("SubRole")
+    return (r and r:IsA("StringValue") and r.Value) or nil, (sr and sr:IsA("StringValue") and sr.Value) or nil, s
+end
+
 local function updatePlayerRole(targetPlayer, playerLabel, playerFrame)
-    local roleValue = nil
-    local subRoleValue = nil
-    
-    if targetPlayer.Parent and targetPlayer:FindFirstChild("PublicStates") then
-        local publicStates = targetPlayer.PublicStates
-        if publicStates:FindFirstChild("Role") and publicStates.Role:IsA("StringValue") then
-            roleValue = publicStates.Role.Value
-        end
-        if publicStates:FindFirstChild("SubRole") and publicStates.SubRole:IsA("StringValue") then
-            subRoleValue = publicStates.SubRole.Value
-        end
-    end
-    
+    local roleValue, subRoleValue = readPublicStates(targetPlayer)
     if roleValue then
         local displayText = targetPlayer.Name .. " - " .. roleValue
-        if subRoleValue and subRoleValue ~= "" then
-            displayText = displayText .. " (" .. subRoleValue .. ")"
-        end
-        
+        if subRoleValue and subRoleValue ~= "" then displayText = displayText .. " (" .. subRoleValue .. ")" end
         if roleValue:lower() == "imposter" then
             playerLabel.Text = "🔴 " .. displayText
             playerLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
@@ -157,15 +151,11 @@ end
 local function updateImposterCount()
     imposterCount = 0
     for _, targetPlayer in pairs(Players:GetPlayers()) do
-        local roleValue = nil
-        if targetPlayer:FindFirstChild("PublicStates") and targetPlayer.PublicStates:FindFirstChild("Role") then
-            roleValue = targetPlayer.PublicStates.Role.Value
-        end
-        if roleValue and roleValue:lower() == "imposter" then
+        local roleValue = targetPlayer:FindFirstChild("PublicStates") and targetPlayer.PublicStates:FindFirstChild("Role")
+        if roleValue and roleValue:IsA("StringValue") and roleValue.Value:lower() == "imposter" then
             imposterCount = imposterCount + 1
         end
     end
-    
     if imposterCount > 0 then
         statusLabel.Text = "🚨 " .. imposterCount .. " IMPOSTER(S) FOUND!"
         statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
@@ -177,44 +167,53 @@ end
 
 local function setupPlayerMonitoring(targetPlayer)
     if playerConnections[targetPlayer.Name] then return end
-    
     local playerFrame, playerLabel = createPlayerEntry(targetPlayer)
     updatePlayerRole(targetPlayer, playerLabel, playerFrame)
-    
+
     playerConnections[targetPlayer.Name] = {}
-    
-    if targetPlayer:FindFirstChild("PublicStates") then
-        local publicStates = targetPlayer.PublicStates
-        if publicStates:FindFirstChild("Role") then
-            playerConnections[targetPlayer.Name].roleConnection = publicStates.Role.Changed:Connect(function()
-                updatePlayerRole(targetPlayer, playerLabel, playerFrame)
-                updateImposterCount()
-            end)
+
+    local function bindPublic(s)
+        if not s then return end
+        for _, name in ipairs({"Role", "SubRole"}) do
+            local child = s:FindFirstChild(name)
+            if child and child:IsA("StringValue") then
+                playerConnections[targetPlayer.Name][name] = child.Changed:Connect(function()
+                    updatePlayerRole(targetPlayer, playerLabel, playerFrame)
+                    updateImposterCount()
+                end)
+            end
         end
-        if publicStates:FindFirstChild("SubRole") then
-            playerConnections[targetPlayer.Name].subRoleConnection = publicStates.SubRole.Changed:Connect(function()
-                updatePlayerRole(targetPlayer, playerLabel, playerFrame)
-                updateImposterCount()
-            end)
-        end
-        
-        playerConnections[targetPlayer.Name].childAddedConnection = publicStates.ChildAdded:Connect(function(child)
+        playerConnections[targetPlayer.Name].childAdded = s.ChildAdded:Connect(function(child)
             if (child.Name == "Role" or child.Name == "SubRole") and child:IsA("StringValue") then
+                if playerConnections[targetPlayer.Name][child.Name] then playerConnections[targetPlayer.Name][child.Name]:Disconnect() end
+                playerConnections[targetPlayer.Name][child.Name] = child.Changed:Connect(function()
+                    updatePlayerRole(targetPlayer, playerLabel, playerFrame)
+                    updateImposterCount()
+                end)
                 updatePlayerRole(targetPlayer, playerLabel, playerFrame)
                 updateImposterCount()
             end
         end)
     end
+
+    local s = targetPlayer:FindFirstChild("PublicStates")
+    bindPublic(s)
+    playerConnections[targetPlayer.Name].playerChild = targetPlayer.ChildAdded:Connect(function(child)
+        if child.Name == "PublicStates" then bindPublic(child) end
+    end)
 end
 
 local function cleanupPlayerMonitoring(playerName)
-    if playerConnections[playerName] then
-        for _, connection in pairs(playerConnections[playerName]) do
-            if connection then connection:Disconnect() end
+    local con = playerConnections[playerName]
+    if con then
+        for _, connection in pairs(con) do
+            if typeof(connection) == "RBXScriptConnection" then
+                connection:Disconnect()
+            end
         end
         playerConnections[playerName] = nil
     end
-    
+
     local playerFrame = scrollFrame:FindFirstChild(playerName)
     if playerFrame then playerFrame:Destroy() end
 end
