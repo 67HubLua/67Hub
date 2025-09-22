@@ -1,10 +1,9 @@
 local Players = game:GetService("Players")
 
 local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Parent = playerGui
+screenGui.Parent = gethui()
 
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 400, 0, 300)
@@ -95,7 +94,6 @@ local imposterCount = 0
 
 local function createPlayerEntry(targetPlayer)
     local playerFrame = Instance.new("Frame")
-    playerFrame.Name = targetPlayer.Name
     playerFrame.Size = UDim2.new(1, -8, 0, 25)
     playerFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     playerFrame.BorderSizePixel = 0
