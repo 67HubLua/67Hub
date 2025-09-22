@@ -8,8 +8,8 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
 local Window = Library:CreateWindow({
-	Title = "mspaint",
-	Footer = "Walkspeed & ESP v3",
+	Title = "67 Hub Universal",
+	Footer = "by SolyNot & Lunar",
 	AutoShow = true,
 })
 
