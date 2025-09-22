@@ -4,11 +4,9 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "ImposterScanner"
 screenGui.Parent = playerGui
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Name = "MainFrame"
 mainFrame.Size = UDim2.new(0, 400, 0, 300)
 mainFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
 mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
@@ -22,7 +20,6 @@ corner.CornerRadius = UDim.new(0, 10)
 corner.Parent = mainFrame
 
 local titleBar = Instance.new("Frame")
-titleBar.Name = "TitleBar"
 titleBar.Size = UDim2.new(1, 0, 0, 30)
 titleBar.Position = UDim2.new(0, 0, 0, 0)
 titleBar.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
@@ -41,7 +38,6 @@ titleFix.BorderSizePixel = 0
 titleFix.Parent = titleBar
 
 local titleText = Instance.new("TextLabel")
-titleText.Name = "TitleText"
 titleText.Size = UDim2.new(1, -60, 1, 0)
 titleText.Position = UDim2.new(0, 10, 0, 0)
 titleText.BackgroundTransparency = 1
@@ -52,7 +48,6 @@ titleText.Font = Enum.Font.GothamBold
 titleText.Parent = titleBar
 
 local closeButton = Instance.new("TextButton")
-closeButton.Name = "CloseButton"
 closeButton.Size = UDim2.new(0, 25, 0, 25)
 closeButton.Position = UDim2.new(1, -30, 0, 2.5)
 closeButton.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
@@ -68,7 +63,6 @@ closeCorner.CornerRadius = UDim.new(0, 5)
 closeCorner.Parent = closeButton
 
 local statusLabel = Instance.new("TextLabel")
-statusLabel.Name = "StatusLabel"
 statusLabel.Size = UDim2.new(1, -20, 0, 20)
 statusLabel.Position = UDim2.new(0, 10, 0, 40)
 statusLabel.BackgroundTransparency = 1
@@ -79,7 +73,6 @@ statusLabel.Font = Enum.Font.Gotham
 statusLabel.Parent = mainFrame
 
 local scrollFrame = Instance.new("ScrollingFrame")
-scrollFrame.Name = "PlayerList"
 scrollFrame.Size = UDim2.new(1, -20, 1, -80)
 scrollFrame.Position = UDim2.new(0, 10, 0, 70)
 scrollFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
@@ -102,7 +95,6 @@ local imposterCount = 0
 
 local function createPlayerEntry(targetPlayer)
     local playerFrame = Instance.new("Frame")
-    playerFrame.Name = targetPlayer.Name
     playerFrame.Size = UDim2.new(1, -8, 0, 25)
     playerFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     playerFrame.BorderSizePixel = 0
@@ -113,7 +105,6 @@ local function createPlayerEntry(targetPlayer)
     entryCorner.Parent = playerFrame
     
     local playerLabel = Instance.new("TextLabel")
-    playerLabel.Name = "PlayerLabel"
     playerLabel.Size = UDim2.new(1, -10, 1, 0)
     playerLabel.Position = UDim2.new(0, 5, 0, 0)
     playerLabel.BackgroundTransparency = 1
@@ -315,6 +306,13 @@ local function cleanupPlayerMonitoring(playerName)
     end
 end
 
+local function scanAllPlayers()
+    for _, targetPlayer in pairs(Players:GetPlayers()) do
+        setupPlayerMonitoring(targetPlayer)
+    end
+    updateImposterCount()
+end
+
 local function destroyGui()
     for playerName, _ in pairs(playerConnections) do
         cleanupPlayerMonitoring(playerName)
@@ -339,7 +337,4 @@ listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 5)
 end)
 
-for _, targetPlayer in pairs(Players:GetPlayers()) do
-    setupPlayerMonitoring(targetPlayer)
-end
-updateImposterCount()
+scanAllPlayers()
